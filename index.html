@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spielplatz plus</title>
+<meta name="description" content="Jeder Spielplatz mit Distanz zum nächsten Trinkbrunnen und WC. Für den Nachmittag ohne Heimweg.">
+<meta name="theme-color" content="#3a2a1b">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<style>
+:root{--bg:#3a2a1b;--card:rgba(255,255,255,.08);--line:rgba(255,255,255,.18);--txt:#f2f6f4;--mut:#b8c6c0;--acc:#5fe1a0}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:16px/1.4 -apple-system,system-ui,"Segoe UI",sans-serif}
+#app{display:flex;flex-direction:column;height:100%}
+header{padding:10px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+h1{font-size:19px;margin:0;font-weight:700}.sp{flex:1}
+button,.chip{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:999px;padding:8px 13px;font-size:14px;cursor:pointer;min-height:40px}
+button.pri{background:var(--acc);color:#062;border-color:var(--acc);font-weight:700}
+.chip[aria-pressed="true"]{background:var(--acc);color:#062;border-color:var(--acc);font-weight:600}.chip.hid{display:none}
+.banner{padding:8px 14px;background:#ffcc55;color:#3a2a00;font-size:14px}.banner a{color:#3a2a00;font-weight:700}.banner.hid{display:none}
+#map{flex:1;min-height:300px;background:#dfe9ee}
+#panel{padding:10px 14px;border-top:1px solid var(--line);font-size:15px}#panel b,#panel a{color:var(--acc)}
+.leaflet-popup-content{font:14px/1.4 -apple-system,system-ui,sans-serif;color:#122}.leaflet-popup-content a{color:#0a8f5f}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+.me{width:18px;height:18px;border-radius:50%;background:#2f7bff;border:3px solid #fff;box-shadow:0 0 0 2px #2f7bff}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--mut);padding:6px 14px 0}.legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.foot{color:var(--mut);font-size:12px;padding:4px 14px 10px}.foot a{color:var(--acc)}
+.lang button{padding:4px 8px;min-height:30px;font-size:13px}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <h1 id="title"></h1>
+  <span class="chip" role="button" tabindex="0" id="only" aria-pressed="false"></span>
+  <span class="sp"></span>
+  <span class="lang"><button data-l="de">DE</button><button data-l="en">EN</button><button data-l="sk">SK</button></span>
+  <button class="pri" id="near"></button>
+</header>
+<div class="banner hid" id="banner"></div>
+<div id="map" role="application" aria-label="Karte"></div>
+<div class="legend" id="legend"></div>
+<div id="panel" aria-live="polite"><span id="hint"></span></div>
+<div class="foot"><span id="src"></span> <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a> (ODbL), <span id="meta"></span>. <span id="foot"></span> · <a href="https://github.com/richardcervenka111-create/spielplatz-plus-bern" rel="noopener">GitHub</a></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="data.js"></script>
+<script>
+(function(){
+const CLASSES={"near": {"color": "#5fe1a0", "de": "Spielplatz, Trinkwasser ≤ 150 m", "en": "Playground, water ≤ 150 m", "sk": "Ihrisko, pitná voda ≤ 150 m"}, "play": {"color": "#ffb74d", "de": "Spielplatz", "en": "Playground", "sk": "Ihrisko"}}, I={"de": {"title": "Spielplatz plus", "sub": "Jeder Spielplatz mit Distanz zum nächsten Trinkbrunnen und WC. Für den Nachmittag ohne Heimweg.", "near": "Nächster Spielplatz", "only": "nur mit Wasser nah", "hint": "Tippe auf „Nächster Spielplatz“ oder auf einen Punkt.", "banner": "", "why": "Die Stadt kennt ihre Spielplätze. Eltern brauchen aber die Kombination: Spielplatz, Wasser, WC. Diese Karte rechnet die Distanzen aus drei Datensätzen vor."}, "en": {"title": "Playground plus", "sub": "Every playground with the distance to the nearest drinking fountain and toilet. For an afternoon without going home.", "near": "Nearest playground", "only": "water nearby only", "hint": "Tap “Nearest playground” or a dot.", "banner": "", "why": "The city knows its playgrounds. Parents need the combination: playground, water, toilet. This map precomputes the distances from three datasets."}, "sk": {"title": "Ihrisko plus", "sub": "Každé ihrisko so vzdialenosťou k najbližšej pitnej fontáne a WC. Na popoludnie bez cesty domov.", "near": "Najbližšie ihrisko", "only": "len s vodou blízko", "hint": "Ťukni na „Najbližšie ihrisko“ alebo na bod.", "banner": "", "why": "Mesto pozná svoje ihriská. Rodičia však potrebujú kombináciu: ihrisko, voda, WC. Táto mapa vopred vypočíta vzdialenosti z troch datasetov."}}, BANNER=null, ONLY="near";
+const COMMON={de:{route:"Route",m:"m",away:"entfernt",nearest:"Nächster Punkt",noGeo:"Standort nicht verfügbar. Erlaube den Zugriff oder zoome selbst.",n:"Punkte",stand:"Stand OSM",src:"Daten:",foot:"Kein Tracking, Standort bleibt im Gerät. Fehler? Direkt in OpenStreetMap korrigieren.",wheel:"rollstuhlgängig"},
+ en:{route:"Route",m:"m",away:"away",nearest:"Nearest",noGeo:"Location unavailable. Allow access or zoom yourself.",n:"points",stand:"OSM as of",src:"Data:",foot:"No tracking, your location stays on the device. Wrong? Fix it in OpenStreetMap.",wheel:"wheelchair accessible"},
+ sk:{route:"Trasa",m:"m",away:"odtiaľto",nearest:"Najbližšie",noGeo:"Poloha nedostupná. Povoľ prístup alebo si priblíž mapu sám.",n:"bodov",stand:"OSM k",src:"Dáta:",foot:"Žiadne sledovanie, poloha ostáva v zariadení. Chyba? Oprav ju priamo v OpenStreetMap.",wheel:"bezbariérové"}};
+let lang=(navigator.language||"de").slice(0,2); if(!I[lang]) lang="de";
+const KEY="map-lang-spielplatz-plus-bern"; try{const s=localStorage.getItem(KEY); if(s&&I[s]) lang=s;}catch(e){}
+const t=k=>(I[lang][k]!==undefined?I[lang][k]:COMMON[lang][k]);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let only=false, me=null, meMarker=null, line=null;
+const data=window.POINTS||[];
+const map=L.map("map").setView([46.948,7.447],14);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
+const layer=L.layerGroup().addTo(map);
+const icon=c=>L.divIcon({className:"",html:`<div class="dot" style="background:${CLASSES[c].color}"></div>`,iconSize:[14,14],iconAnchor:[7,7]});
+function label(p){ const lines=[`<b>${esc(CLASSES[p.c][lang])}</b>`].concat(p.f.map(esc)); if(p.w==="yes") lines.push(t("wheel"));
+  lines.push(`<a href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}&travelmode=walking" rel="noopener">${t("route")}</a> · <a href="https://www.openstreetmap.org/${p.ty}/${p.id}" rel="noopener">OSM</a>`); return lines.join("<br>"); }
+function visible(p){ return !only || !ONLY || p.c===ONLY; }
+function draw(){ layer.clearLayers(); let n=0; data.forEach(p=>{ if(!visible(p)) return; n++; L.marker([p.lat,p.lon],{icon:icon(p.c)}).bindPopup(label(p)).addTo(layer); });
+  document.getElementById("meta").textContent=`${n} ${t("n")}, ${t("stand")} ${(window.POINTS_META||{}).osm_base||""}`; }
+function dist(a,b,c,d){const R=6371000,q=Math.PI/180,x=(c-a)*q,y=(d-b)*q,h=Math.sin(x/2)**2+Math.cos(a*q)*Math.cos(c*q)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+function nearest(){ if(!me) return; let best=null,bd=1e12; data.forEach(p=>{ if(!visible(p)) return; const d=dist(me[0],me[1],p.lat,p.lon); if(d<bd){bd=d;best=p;} }); if(!best) return;
+  if(line) map.removeLayer(line); line=L.polyline([me,[best.lat,best.lon]],{color:"#2f7bff",dashArray:"6 6",weight:3}).addTo(map); map.fitBounds(line.getBounds(),{padding:[40,40],maxZoom:17});
+  document.getElementById("panel").innerHTML=`<b>${t("nearest")}</b>: ${esc(CLASSES[best.c][lang])}${best.f[0]?" · "+esc(best.f[0]):""} · <b>${Math.round(bd)} ${t("m")}</b> ${t("away")} · <a href="https://www.google.com/maps/dir/?api=1&destination=${best.lat},${best.lon}&travelmode=walking" rel="noopener">${t("route")}</a>`;
+  L.popup().setLatLng([best.lat,best.lon]).setContent(label(best)).openOn(map); }
+document.getElementById("near").addEventListener("click",()=>{ if(!navigator.geolocation){alert(t("noGeo"));return;}
+  navigator.geolocation.getCurrentPosition(p=>{ me=[p.coords.latitude,p.coords.longitude]; if(meMarker) map.removeLayer(meMarker); meMarker=L.marker(me,{icon:L.divIcon({className:"",html:'<div class="me"></div>',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(map); nearest(); },()=>alert(t("noGeo")),{enableHighAccuracy:true,timeout:10000}); });
+const oc=document.getElementById("only"); function toggle(){ only=!only; oc.setAttribute("aria-pressed",only?"true":"false"); draw(); }
+oc.addEventListener("click",toggle); oc.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle();}});
+function applyLang(){ document.documentElement.lang=lang; document.title=t("title");
+  document.getElementById("title").textContent=t("title"); document.getElementById("near").textContent=t("near"); document.getElementById("hint").textContent=t("hint");
+  document.getElementById("src").textContent=t("src"); document.getElementById("foot").textContent=t("foot");
+  const onlyTxt=t("only"); oc.textContent=onlyTxt; oc.classList.toggle("hid",!onlyTxt||!ONLY);
+  const b=document.getElementById("banner"); if(BANNER&&t("banner")){ b.classList.remove("hid"); b.innerHTML=esc(t("banner").replace("{d}",BANNER.date).replace("{s}",BANNER.status))+` <a href="${BANNER.url}" rel="noopener">naturgefahren.be.ch</a>`; } else b.classList.add("hid");
+  document.getElementById("legend").innerHTML=Object.keys(CLASSES).map(k=>`<span><i style="background:${CLASSES[k].color}"></i>${esc(CLASSES[k][lang])}</span>`).join("");
+  document.querySelectorAll(".lang button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.l===lang?"true":"false")); draw(); }
+document.querySelectorAll(".lang button").forEach(x=>x.addEventListener("click",()=>{lang=x.dataset.l; try{localStorage.setItem(KEY,lang);}catch(e){} applyLang();}));
+applyLang();
+})();
+</script>
+</body>
+</html>
