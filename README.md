@@ -4,7 +4,7 @@ Die Stadt kennt ihre Spielplätze. Eltern brauchen aber die Kombination: Spielpl
 
 Live: **https://richardcervenka111-create.github.io/spielplatz-plus-bern/**
 
-Drei Sprachen (DE/EN/SK), „nächster Punkt“ mit Fussroute, kein Tracking, Standort bleibt im Gerät.
+Zwei Sprachen (DE/EN), „nächster Punkt“ mit Fussroute, kein Tracking, Standort bleibt im Gerät.
 
 ## Daten
 
