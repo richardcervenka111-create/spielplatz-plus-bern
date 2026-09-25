@@ -22,7 +22,9 @@ jobs:
         run: |
           grep -q 'name="viewport"' index.html
           grep -q 'window.POINTS=' data.js
-          ! grep -qiE 'fetch\(|XMLHttpRequest|sendBeacon|gtag|analytics' index.html
+          ! grep -qiE 'XMLHttpRequest|sendBeacon|gtag|analytics' index.html
+          test "$(grep -o 'fetch([^,)]*' index.html | sort -u | wc -l)" -eq 1
+          grep -q 'https://routing.openstreetmap.de/routed-foot/' index.html
       - uses: actions/configure-pages@v5
         with:
           enablement: true
@@ -30,6 +32,7 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html data.js _site/
+          cp -r assets _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
